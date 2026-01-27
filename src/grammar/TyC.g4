@@ -161,8 +161,14 @@ forUpdate
 
 // Switch Statement
 // switch (<expression>) { case <constant>: <statements> ... default: <statements> }
+// Note: default can appear anywhere (spec line 720)
 switchStatement
-    : 'switch' '(' expression ')' '{' caseClause* defaultClause? '}'
+    : 'switch' '(' expression ')' '{' switchCase* '}'
+    ;
+
+switchCase
+    : caseClause
+    | defaultClause
     ;
 
 caseClause
