@@ -166,7 +166,13 @@ switchStatement
     ;
 
 caseClause
-    : 'case' INT_LITERAL ':' statement*
+    : 'case' caseExpression ':' statement*
+    ;
+
+// Case expression - allows constant expressions per spec
+// Semantic analysis validates it's a compile-time constant int
+caseExpression
+    : expression
     ;
 
 defaultClause
@@ -273,6 +279,7 @@ primaryExpression
     | FLOAT_LITERAL
     | STRING_LITERAL
     | '(' expression ')'
+    | '{' expressionList? '}'  // struct literal for function args: f({1, 2})
     ;
 
 argumentList
@@ -356,8 +363,6 @@ LEFT_PAREN: '(';
 RIGHT_PAREN: ')';
 LEFT_BRACE: '{';
 RIGHT_BRACE: '}';
-LEFT_BRACKET: '[';
-RIGHT_BRACKET: ']';
 SEMICOLON: ';';
 COMMA: ',';
 COLON: ':';
@@ -370,9 +375,10 @@ LINE_COMMENT
     : '//' ~[\r\n]* -> skip
     ;
 
-// Block comment: /* to */
+// Block comment: /* to */ (or to EOF if unclosed per spec line 114)
+// Note: .*? is non-greedy but will consume to EOF if no */ found
 BLOCK_COMMENT
-    : '/*' .*? '*/' -> skip
+    : '/*' (~[*] | '*' ~[/])* ('*/')? -> skip
     ;
 
 // Error handling tokens - ORDER MATTERS!
