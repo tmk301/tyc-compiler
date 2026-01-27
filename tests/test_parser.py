@@ -899,3 +899,122 @@ class TestStructLiterals:
         """
         assert Parser(source).parse() == "success"
 
+
+# =============================================================================
+# ADDITIONAL INCREMENT/DECREMENT TESTS (4 tests)
+# =============================================================================
+
+class TestIncrementDecrementExpressions:
+    """Test increment/decrement in various contexts (spec lines 501-506)"""
+    
+    def test_postfix_decrement(self):
+        """Test postfix decrement x--"""
+        assert Parser("void f() { int x; x--; }").parse() == "success"
+    
+    def test_prefix_decrement(self):
+        """Test prefix decrement --x"""
+        assert Parser("void f() { int x; --x; }").parse() == "success"
+    
+    def test_postfix_increment_in_expression(self):
+        """Test postfix increment in expression a = x++"""
+        assert Parser("void f() { int x; int a; a = x++; }").parse() == "success"
+    
+    def test_member_increment(self):
+        """Test member increment p.x++ (spec line 366)"""
+        source = """
+        struct Point { int x; int y; };
+        void f() { Point p; p.x++; }
+        """
+        assert Parser(source).parse() == "success"
+
+
+# =============================================================================
+# STRUCT OPERATIONS TESTS (2 tests)
+# =============================================================================
+
+class TestStructOperations:
+    """Test struct operations (spec lines 371, 380)"""
+    
+    def test_struct_assignment(self):
+        """Test struct assignment p1 = p2 (spec line 371, 380)"""
+        source = """
+        struct Point { int x; int y; };
+        void f() { Point p1; Point p2 = {1, 2}; p1 = p2; }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_struct_member_to_variable(self):
+        """Test assigning struct member to variable"""
+        source = """
+        struct Point { int x; int y; };
+        void f() { Point p = {1, 2}; int v; v = p.x; }
+        """
+        assert Parser(source).parse() == "success"
+
+
+# =============================================================================
+# ALL RELATIONAL OPERATORS TESTS (5 tests)
+# =============================================================================
+
+class TestAllRelationalOperators:
+    """Test all relational operators in expressions (spec lines 486-489)"""
+    
+    def test_less_equal_expression(self):
+        """Test <= in expression"""
+        assert Parser("void f() { auto x = 1 <= 2; }").parse() == "success"
+    
+    def test_greater_expression(self):
+        """Test > in expression"""
+        assert Parser("void f() { auto x = 2 > 1; }").parse() == "success"
+    
+    def test_greater_equal_expression(self):
+        """Test >= in expression"""
+        assert Parser("void f() { auto x = 2 >= 1; }").parse() == "success"
+    
+    def test_equal_expression(self):
+        """Test == in expression"""
+        assert Parser("void f() { auto x = 1 == 1; }").parse() == "success"
+    
+    def test_not_equal_expression(self):
+        """Test != in expression"""
+        assert Parser("void f() { auto x = 1 != 2; }").parse() == "success"
+
+
+# =============================================================================
+# LOGICAL OPERATORS TESTS (2 tests)
+# =============================================================================
+
+class TestLogicalOperatorsAdvanced:
+    """Test logical operators in complex expressions (spec line 493)"""
+    
+    def test_logical_not_complex(self):
+        """Test !(x < 5) - logical NOT in complex expression"""
+        assert Parser("void f() { int x; auto y = !(x < 5); }").parse() == "success"
+    
+    def test_logical_operators_combined(self):
+        """Test combined logical operators"""
+        assert Parser("void f() { auto x = (1 && 2) || (!0); }").parse() == "success"
+
+
+# =============================================================================
+# SWITCH ADDITIONAL TESTS (2 tests)
+# =============================================================================
+
+class TestSwitchAdvanced:
+    """Test advanced switch features (spec lines 720-722)"""
+    
+    def test_default_before_case(self):
+        """Test default before case (spec line 720: default can appear anywhere)"""
+        source = """
+        void f() {
+            switch (x) {
+                default: x = 0;
+                case 1: x = 1;
+            }
+        }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_empty_default(self):
+        """Test empty default clause (spec line 722)"""
+        assert Parser("void f() { switch (x) { default: } }").parse() == "success"

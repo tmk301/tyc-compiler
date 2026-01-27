@@ -553,6 +553,30 @@ class TestErrorHandling:
         with pytest.raises(Exception) as exc_info:
             Tokenizer("`").get_tokens_as_string()
         assert "Error Token `" in str(exc_info.value)
+    
+    def test_unclosed_string_with_newline(self):
+        """Test unclosed string terminated by newline (spec line 199, 228)"""
+        with pytest.raises(Exception) as exc_info:
+            Tokenizer('"hello\nworld"').get_tokens_as_string()
+        assert "Unclosed String" in str(exc_info.value)
+    
+    def test_unclosed_string_with_carriage_return(self):
+        """Test unclosed string terminated by carriage return (spec line 199, 228)"""
+        with pytest.raises(Exception) as exc_info:
+            Tokenizer('"hello\rworld"').get_tokens_as_string()
+        assert "Unclosed String" in str(exc_info.value)
+    
+    def test_error_single_ampersand(self):
+        """Test single ampersand (not valid operator)"""
+        with pytest.raises(Exception) as exc_info:
+            Tokenizer("&").get_tokens_as_string()
+        assert "Error Token &" in str(exc_info.value)
+    
+    def test_error_single_pipe(self):
+        """Test single pipe (not valid operator)"""
+        with pytest.raises(Exception) as exc_info:
+            Tokenizer("|").get_tokens_as_string()
+        assert "Error Token |" in str(exc_info.value)
 
 
 # =============================================================================
