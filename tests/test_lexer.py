@@ -399,11 +399,11 @@ class TestIncrementDecrement:
 
 
 # =============================================================================
-# SEPARATOR TESTS (8 tests)
+# SEPARATOR TESTS (6 tests)
 # =============================================================================
 
 class TestSeparators:
-    """Test separator recognition"""
+    """Test separator recognition (per spec line 176: { } ( ) ; , :)"""
     
     def test_left_paren(self):
         """Test left parenthesis"""
@@ -420,14 +420,6 @@ class TestSeparators:
     def test_right_brace(self):
         """Test right brace"""
         assert "RIGHT_BRACE,}" in Tokenizer("}").get_tokens_as_string()
-    
-    def test_left_bracket(self):
-        """Test left bracket"""
-        assert "LEFT_BRACKET,[" in Tokenizer("[").get_tokens_as_string()
-    
-    def test_right_bracket(self):
-        """Test right bracket"""
-        assert "RIGHT_BRACKET,]" in Tokenizer("]").get_tokens_as_string()
     
     def test_semicolon(self):
         """Test semicolon"""
@@ -455,7 +447,7 @@ class TestDotColon:
 
 
 # =============================================================================
-# COMMENT TESTS (6 tests)
+# COMMENT TESTS (8 tests)
 # =============================================================================
 
 class TestComments:
@@ -493,6 +485,18 @@ class TestComments:
         """Test // inside block comment has no meaning"""
         result = Tokenizer("/* // inside */ x").get_tokens_as_string()
         assert "IDENTIFIER,x" in result
+    
+    def test_block_star_in_line_comment(self):
+        """Test /* inside line comment has no meaning (spec line 125)"""
+        result = Tokenizer("// /* this is line comment\nint").get_tokens_as_string()
+        assert "KEYWORD_INT,int" in result
+        assert "/*" not in result
+    
+    def test_unclosed_block_comment(self):
+        """Test unclosed block comment (spec line 114: ignores until EOF)"""
+        # Unclosed block comment should consume everything until EOF
+        result = Tokenizer("/* unclosed block comment").get_tokens_as_string()
+        assert "unclosed" not in result
 
 
 # =============================================================================
@@ -552,11 +556,11 @@ class TestErrorHandling:
 
 
 # =============================================================================
-# WHITESPACE TESTS (4 tests)
+# WHITESPACE TESTS (6 tests)
 # =============================================================================
 
 class TestWhitespace:
-    """Test whitespace handling"""
+    """Test whitespace handling (spec line 108: space, tab, formfeed, CR, LF)"""
     
     def test_spaces_skipped(self):
         """Test spaces are skipped"""
@@ -576,4 +580,14 @@ class TestWhitespace:
     def test_mixed_whitespace(self):
         """Test mixed whitespace"""
         result = Tokenizer(" \t\n int \t\n ").get_tokens_as_string()
+        assert "KEYWORD_INT,int" in result
+    
+    def test_formfeed_skipped(self):
+        """Test formfeed is skipped (spec line 108: form feed ASCII FF)"""
+        result = Tokenizer("\f\fint\f\f").get_tokens_as_string()
+        assert "KEYWORD_INT,int" in result
+    
+    def test_carriage_return_skipped(self):
+        """Test carriage return is skipped (spec line 108)"""
+        result = Tokenizer("\r\rint\r\r").get_tokens_as_string()
         assert "KEYWORD_INT,int" in result

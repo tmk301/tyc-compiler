@@ -624,3 +624,278 @@ class TestSyntaxErrors:
         # This is actually valid for void inference, so test different case
         result = Parser("void f() { if () x = 1; }").parse()
         assert result != "success"
+
+
+# =============================================================================
+# NEW SPEC FEATURES: CASE EXPRESSIONS (7 tests)
+# =============================================================================
+
+class TestCaseExpressions:
+    """Test case expressions per updated spec (lines 728-733)"""
+    
+    def test_case_with_unary_minus(self):
+        """Test case -5:"""
+        source = "void f() { switch (x) { case -5: break; } }"
+        assert Parser(source).parse() == "success"
+    
+    def test_case_with_unary_plus(self):
+        """Test case +1:"""
+        source = "void f() { switch (x) { case +1: break; } }"
+        assert Parser(source).parse() == "success"
+    
+    def test_case_with_parenthesized(self):
+        """Test case (1):"""
+        source = "void f() { switch (x) { case (1): break; } }"
+        assert Parser(source).parse() == "success"
+    
+    def test_case_with_addition(self):
+        """Test case 1+2:"""
+        source = "void f() { switch (x) { case 1+2: break; } }"
+        assert Parser(source).parse() == "success"
+    
+    def test_case_with_multiplication(self):
+        """Test case 3*4:"""
+        source = "void f() { switch (x) { case 3*4: break; } }"
+        assert Parser(source).parse() == "success"
+    
+    def test_case_with_complex_expression(self):
+        """Test case (2+3)*4:"""
+        source = "void f() { switch (x) { case (2+3)*4: break; } }"
+        assert Parser(source).parse() == "success"
+    
+    def test_case_with_modulo(self):
+        """Test case 10%3:"""
+        source = "void f() { switch (x) { case 10%3: break; } }"
+        assert Parser(source).parse() == "success"
+
+# =============================================================================
+# BLOCK AND EXPRESSION STATEMENT TESTS (4 tests)
+# =============================================================================
+
+class TestBlockAndExpressionStatements:
+    """Test block statements and expression statements (spec lines 619-631, 800-808)"""
+    
+    def test_empty_block(self):
+        """Test empty block statement"""
+        assert Parser("void f() { {} }").parse() == "success"
+    
+    def test_block_with_statements(self):
+        """Test block with multiple statements (spec lines 619-631)"""
+        source = """
+        void f() {
+            {
+                auto x = 10;
+                auto y = 20;
+                auto sum = x + y;
+            }
+        }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_nested_blocks(self):
+        """Test nested block statements"""
+        source = """
+        void f() {
+            {
+                {
+                    int x = 1;
+                }
+            }
+        }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_expression_statement(self):
+        """Test expression statement (spec lines 800-808)"""
+        source = """
+        int foo() { return 1; }
+        void main() { foo(); }
+        """
+        assert Parser(source).parse() == "success"
+
+
+# =============================================================================
+# ADVANCED ASSIGNMENT TESTS (4 tests)
+# =============================================================================
+
+class TestAdvancedAssignment:
+    """Test advanced assignment features (spec line 532)"""
+    
+    def test_chained_assignment(self):
+        """Test chained assignment x = y = z = 10 (spec line 532)"""
+        source = """
+        void f() {
+            int x;
+            int y;
+            int z;
+            x = y = z = 10;
+        }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_assignment_in_expression(self):
+        """Test assignment used in expression context (spec line 532)"""
+        source = """
+        void f() {
+            int x;
+            int y = (x = 5) + 7;
+        }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_assignment_in_condition(self):
+        """Test assignment in if condition"""
+        source = """
+        void f() {
+            int x;
+            if (x = 1) x = 2;
+        }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_assignment_in_while_condition(self):
+        """Test assignment in while condition"""
+        source = """
+        void f() {
+            int x;
+            while (x = 1) break;
+        }
+        """
+        assert Parser(source).parse() == "success"
+
+
+# =============================================================================
+# DANGLING ELSE TESTS (3 tests)
+# =============================================================================
+
+class TestDanglingElse:
+    """Test dangling else resolution (spec line 663)"""
+    
+    def test_dangling_else_basic(self):
+        """Test dangling else: else binds to nearest if (spec line 663)"""
+        source = """
+        void f() {
+            int x;
+            int y;
+            int a;
+            int b;
+            if (x) if (y) a = 1; else b = 2;
+        }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_dangling_else_with_blocks(self):
+        """Test dangling else with explicit blocks"""
+        source = """
+        void f() {
+            int x;
+            int y;
+            if (x) { if (y) x = 1; } else y = 2;
+        }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_deeply_nested_if_else(self):
+        """Test deeply nested if-else"""
+        source = """
+        void f() {
+            int a;
+            int b;
+            int c;
+            if (a) if (b) if (c) a = 1; else b = 2; else c = 3;
+        }
+        """
+        assert Parser(source).parse() == "success"
+
+
+# =============================================================================
+# CONTINUE IN FOR LOOP TEST (1 test)
+# =============================================================================
+
+class TestContinueInFor:
+    """Test continue statement in for loop"""
+    
+    def test_continue_in_for(self):
+        """Test continue in for loop (spec line 786)"""
+        assert Parser("void f() { for (;;) continue; }").parse() == "success"
+
+
+# =============================================================================
+# NEW SPEC FEATURES: STRUCT LITERALS (8 tests)
+# =============================================================================
+
+class TestStructLiterals:
+    """Test struct literals in expressions per updated spec (lines 339-340)"""
+    
+    def test_struct_literal_as_function_arg(self):
+        """Test f({1, 2}) - struct literal as function argument"""
+        source = """
+        struct Point { int x; int y; };
+        void draw(Point p) {}
+        void main() { draw({10, 20}); }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_struct_literal_empty(self):
+        """Test f({}) - empty struct literal"""
+        source = """
+        struct Empty {};
+        void process(Empty e) {}
+        void main() { process({}); }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_struct_literal_single_member(self):
+        """Test {1} - single member struct literal"""
+        source = """
+        struct Single { int val; };
+        void f(Single s) {}
+        void main() { f({42}); }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_nested_struct_literal(self):
+        """Test {{1, 2}, 3} - nested struct literal"""
+        source = """
+        struct Point { int x; int y; };
+        struct Point3D { Point p; int z; };
+        void main() { Point3D p3 = {{1, 2}, 3}; }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_struct_literal_with_expressions(self):
+        """Test {1+2, 3*4} - struct literal with expressions"""
+        source = """
+        struct Point { int x; int y; };
+        void draw(Point p) {}
+        void main() { draw({1+2, 3*4}); }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_struct_literal_multiple_args(self):
+        """Test function with multiple struct literal args"""
+        source = """
+        struct Point { int x; int y; };
+        void connect(Point a, Point b) {}
+        void main() { connect({0, 0}, {10, 10}); }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_struct_literal_in_return(self):
+        """Test return {1, 2}"""
+        source = """
+        struct Point { int x; int y; };
+        Point origin() { return {0, 0}; }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_deeply_nested_struct_literal(self):
+        """Test deeply nested struct literal"""
+        source = """
+        struct A { int val; };
+        struct B { A a; };
+        struct C { B b; };
+        void main() { C c = {{{5}}}; }
+        """
+        assert Parser(source).parse() == "success"
+
