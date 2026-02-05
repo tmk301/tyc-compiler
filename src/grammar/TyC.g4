@@ -389,16 +389,18 @@ BLOCK_COMMENT
 
 // Error handling tokens - ORDER MATTERS!
 // These must be AFTER valid tokens but BEFORE ERROR_CHAR
+// Per spec: illegal escape is detected FIRST, then unclosed string
+
+// Illegal escape: string with invalid escape sequence
+// Detected first per spec line 226
+ILLEGAL_ESCAPE
+    : '"' (~["\\\r\n] | '\\' [bfrnrt"\\])* '\\' ~[bfrnrt"\\]
+    ;
 
 // Unclosed string: starts with " but no closing "
 // Content can have valid escapes or non-special chars
 UNCLOSE_STRING
     : '"' (~["\\\r\n] | '\\' [bfrnrt"\\])*
-    ;
-
-// Illegal escape: string with invalid escape sequence
-ILLEGAL_ESCAPE
-    : '"' (~["\\\r\n] | '\\' [bfrnrt"\\])* '\\' ~[bfrnrt"\\]
     ;
 
 // Error character: any character not matched above
