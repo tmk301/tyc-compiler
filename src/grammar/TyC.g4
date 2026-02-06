@@ -340,7 +340,7 @@ FLOAT_LITERAL
 // Enclosed by double quotes
 // Escape sequences: \b \f \r \n \t \" \\
 STRING_LITERAL
-    : '"' (~["\\\r\n] | '\\' [bfrnrt"\\])* '"' 
+    : '"' (~["\\\r\n] | '\\' [bfrnt"\\])* '"' 
     { self.text = self.text[1:-1] }
     ;
 
@@ -394,13 +394,13 @@ BLOCK_COMMENT
 // Illegal escape: string with invalid escape sequence
 // Detected first per spec line 226
 ILLEGAL_ESCAPE
-    : '"' (~["\\\r\n] | '\\' [bfrnrt"\\])* '\\' ~[bfrnrt"\\]
+    : '"' (~["\\\r\n] | '\\' [bfrnt"\\])* '\\' ~[bfrnt"\\]
     ;
 
 // Unclosed string: starts with " but no closing "
 // Content can have valid escapes or non-special chars
 UNCLOSE_STRING
-    : '"' (~["\\\r\n] | '\\' [bfrnrt"\\])*
+    : '"' (~["\\\r\n] | '\\' [bfrnt"\\])*
     ;
 
 // Error character: any character not matched above

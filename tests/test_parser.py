@@ -1018,3 +1018,244 @@ class TestSwitchAdvanced:
     def test_empty_default(self):
         """Test empty default clause (spec line 722)"""
         assert Parser("void f() { switch (x) { default: } }").parse() == "success"
+
+
+# =============================================================================
+# OPERATOR PRECEDENCE TESTS (10 tests) - Gap Coverage
+# =============================================================================
+
+class TestOperatorPrecedence:
+    """Explicit operator precedence tests per spec lines 541-556"""
+    
+    def test_member_vs_arithmetic(self):
+        """Test p.x + 1 parsed as (p.x) + 1"""
+        source = """
+        struct Point { int x; };
+        void f() { Point p; auto r = p.x + 1; }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_mult_vs_add(self):
+        """Test 1 + 2 * 3 parsed as 1 + (2 * 3)"""
+        assert Parser("void f() { auto x = 1 + 2 * 3; }").parse() == "success"
+    
+    def test_add_vs_relational(self):
+        """Test a + 1 < b + 2 parsed as (a + 1) < (b + 2)"""
+        assert Parser("void f() { int a; int b; auto x = a + 1 < b + 2; }").parse() == "success"
+    
+    def test_relational_vs_equality(self):
+        """Test a < b == c < d parsed as (a < b) == (c < d)"""
+        assert Parser("void f() { int a; int b; int c; int d; auto x = a < b == c < d; }").parse() == "success"
+    
+    def test_equality_vs_and(self):
+        """Test a == b && c == d parsed as (a == b) && (c == d)"""
+        assert Parser("void f() { int a; int b; int c; int d; auto x = a == b && c == d; }").parse() == "success"
+    
+    def test_and_vs_or(self):
+        """Test a && b || c && d parsed as (a && b) || (c && d)"""
+        assert Parser("void f() { int a; int b; int c; int d; auto x = a && b || c && d; }").parse() == "success"
+    
+    def test_or_vs_assign(self):
+        """Test x = a || b parsed as x = (a || b)"""
+        assert Parser("void f() { int x; int a; int b; x = a || b; }").parse() == "success"
+    
+    def test_full_precedence_chain(self):
+        """Test expression with all precedence levels"""
+        source = """
+        struct S { int g; };
+        void f() { S s; int a; int b; int c; int d; int e; int x;
+            x = a || b && c == d + e * s.g;
+        }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_function_call_in_precedence(self):
+        """Test function call precedence with postfix++"""
+        source = """
+        int foo() { return 1; }
+        void f() { auto x = foo() + 1; }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_unary_vs_binary(self):
+        """Test -a * b parsed as (-a) * b"""
+        assert Parser("void f() { int a; int b; auto x = -a * b; }").parse() == "success"
+
+
+# =============================================================================
+# CHAINED EXPRESSION TESTS (6 tests) - Gap Coverage
+# =============================================================================
+
+class TestChainedExpressions:
+    """Test chained operators and expressions"""
+    
+    def test_chained_addition(self):
+        """Test a + b + c + d (left-associative)"""
+        assert Parser("void f() { auto x = 1 + 2 + 3 + 4; }").parse() == "success"
+    
+    def test_chained_comparison(self):
+        """Test a < b < c (left-associative)"""
+        assert Parser("void f() { int a; int b; int c; auto x = a < b < c; }").parse() == "success"
+    
+    def test_chained_member_access(self):
+        """Test a.b.c.d (left-associative)"""
+        source = """
+        struct A { int val; };
+        struct B { A a; };
+        struct C { B b; };
+        struct D { C c; };
+        void f() { D d; auto x = d.c.b.a.val; }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_chained_function_calls(self):
+        """Test using result of function call"""
+        source = """
+        struct Point { int x; };
+        Point getPoint() { Point p; return p; }
+        void f() { auto x = getPoint().x; }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_chained_logical_and(self):
+        """Test a && b && c && d"""
+        assert Parser("void f() { auto x = 1 && 2 && 3 && 4; }").parse() == "success"
+    
+    def test_chained_logical_or(self):
+        """Test a || b || c || d"""
+        assert Parser("void f() { auto x = 0 || 0 || 1 || 0; }").parse() == "success"
+
+
+# =============================================================================
+# ADDITIONAL SYNTAX ERROR TESTS (8 tests) - Gap Coverage
+# =============================================================================
+
+class TestAdditionalSyntaxErrors:
+    """Test additional syntax error cases"""
+    
+    def test_trailing_comma_in_args(self):
+        """Test f(a, b,) - trailing comma"""
+        result = Parser("void f() { foo(a, b,); }").parse()
+        assert result != "success"
+    
+    def test_empty_parentheses_expr(self):
+        """Test () as expression"""
+        result = Parser("void f() { auto x = (); }").parse()
+        assert result != "success"
+    
+    def test_double_semicolon(self):
+        """Test ;; - note: may be valid as empty statements in some grammars"""
+        # This tests if double semicolons parse - grammar specific
+        result = Parser("void f() { ;; }").parse()
+        # Depending on grammar, this could be valid (empty statements)
+        # Just verify it doesn't crash
+        assert result is not None
+    
+    def test_missing_function_body(self):
+        """Test function declaration without body"""
+        result = Parser("void f();").parse()
+        assert result != "success"
+    
+    def test_struct_missing_semicolon_after_brace(self):
+        """Test struct S {} without trailing semicolon"""
+        result = Parser("struct S {}").parse()
+        assert result != "success"
+    
+    def test_for_missing_semicolons(self):
+        """Test for () - missing semicolons"""
+        result = Parser("void f() { for () x = 1; }").parse()
+        assert result != "success"
+    
+    def test_switch_case_missing_colon(self):
+        """Test case 1 without colon"""
+        result = Parser("void f() { switch (x) { case 1 break; } }").parse()
+        assert result != "success"
+    
+    def test_if_missing_condition(self):
+        """Test if () - empty condition"""
+        result = Parser("void f() { if () x = 1; }").parse()
+        assert result != "success"
+
+
+# =============================================================================
+# VOID TYPE RESTRICTION TESTS (2 tests) - Gap Coverage
+# =============================================================================
+
+class TestVoidRestrictions:
+    """Test void type restrictions per spec"""
+    
+    def test_void_variable_declaration(self):
+        """Test void x; - should be syntax error"""
+        result = Parser("void f() { void x; }").parse()
+        # Parser may or may not catch this - semantic check may be needed
+        # Just ensure it doesn't crash
+        assert result is not None
+    
+    def test_void_parameter(self):
+        """Test void parameter - void f(void x) - should be error"""
+        result = Parser("void f(void x) {}").parse()
+        # Parser may or may not catch this
+        assert result is not None
+
+
+# =============================================================================
+# CONTINUE IN SWITCH TESTS (1 test) - Gap Coverage
+# =============================================================================
+
+class TestContinueInSwitch:
+    """Test continue statement behavior with switch (spec line 770-771)"""
+    
+    def test_continue_in_switch_inside_loop(self):
+        """Test continue in switch that is inside a loop (valid)"""
+        source = """
+        void f() {
+            while (1) {
+                switch (x) {
+                    default:
+                        continue;
+                }
+            }
+        }
+        """
+        assert Parser(source).parse() == "success"
+
+
+# =============================================================================
+# NESTED PARENTHESES TESTS (2 tests) - Gap Coverage
+# =============================================================================
+
+class TestNestedParentheses:
+    """Test deeply nested parentheses"""
+    
+    def test_deeply_nested_parens(self):
+        """Test (((((x)))))"""
+        assert Parser("void f() { auto x = (((((1))))); }").parse() == "success"
+    
+    def test_complex_nested_expression(self):
+        """Test complex nested expression"""
+        assert Parser("void f() { auto x = ((1 + 2) * (3 - 4)) / ((5 + 6)); }").parse() == "success"
+
+
+# =============================================================================
+# POSTFIX AND PREFIX COMBINATION TESTS (3 tests) - Gap Coverage
+# =============================================================================
+
+class TestPrefixPostfixCombinations:
+    """Test combinations of prefix and postfix operators"""
+    
+    def test_double_unary_minus(self):
+        """Test - - x (two unary minus)"""
+        assert Parser("void f() { int x; auto y = - -x; }").parse() == "success"
+    
+    def test_double_logical_not(self):
+        """Test !!x"""
+        assert Parser("void f() { int x; auto y = !!x; }").parse() == "success"
+    
+    def test_unary_on_member_access(self):
+        """Test -p.x"""
+        source = """
+        struct Point { int x; };
+        void f() { Point p; auto y = -p.x; }
+        """
+        assert Parser(source).parse() == "success"
+

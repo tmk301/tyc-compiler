@@ -622,3 +622,128 @@ class TestComplexExpressions:
     def test_member_access(self):
         """Test member access tokenization"""
         assert Tokenizer("p.x").get_tokens_as_string() == "p,.,x,<EOF>"
+
+
+# =============================================================================
+# ADDITIONAL ILLEGAL ESCAPE TESTS (8 tests) - Gap Coverage
+# =============================================================================
+
+class TestIllegalEscapeSequences:
+    """Additional illegal escape sequence tests per spec lines 217-233"""
+    
+    def test_illegal_escape_zero(self):
+        """Test illegal escape sequence \\0"""
+        result = Tokenizer('"test\\0"').get_tokens_as_string()
+        assert "Illegal Escape" in result
+    
+    def test_illegal_escape_v(self):
+        """Test illegal escape sequence \\v (vertical tab not supported)"""
+        result = Tokenizer('"test\\v"').get_tokens_as_string()
+        assert "Illegal Escape" in result
+    
+    def test_illegal_escape_hex(self):
+        """Test illegal escape sequence \\x41 (hex not supported per spec)"""
+        result = Tokenizer('"\\x41"').get_tokens_as_string()
+        assert "Illegal Escape" in result
+    
+    def test_illegal_escape_octal(self):
+        """Test illegal escape sequence \\123 (octal not supported)"""
+        result = Tokenizer('"\\123"').get_tokens_as_string()
+        assert "Illegal Escape" in result
+    
+    def test_illegal_escape_unicode(self):
+        """Test illegal escape sequence \\u0041 (unicode not supported)"""
+        result = Tokenizer('"\\u0041"').get_tokens_as_string()
+        assert "Illegal Escape" in result
+    
+    def test_illegal_escape_capital_N(self):
+        """Test illegal escape sequence \\N"""
+        result = Tokenizer('"test\\N"').get_tokens_as_string()
+        assert "Illegal Escape" in result
+    
+    def test_illegal_escape_s(self):
+        """Test illegal escape sequence \\s"""
+        result = Tokenizer('"test\\s"').get_tokens_as_string()
+        assert "Illegal Escape" in result
+    
+    def test_illegal_escape_c(self):
+        """Test illegal escape sequence \\c"""
+        result = Tokenizer('"test\\c"').get_tokens_as_string()
+        assert "Illegal Escape" in result
+
+
+# =============================================================================
+# KEYWORD EDGE CASES (4 tests) - Gap Coverage
+# =============================================================================
+
+class TestKeywordEdgeCases:
+    """Test keyword edge cases per spec lines 139-146"""
+    
+    def test_keyword_as_prefix(self):
+        """Test 'autoVar' is identifier, not keyword + identifier"""
+        assert Tokenizer("autoVar").get_tokens_as_string() == "autoVar,<EOF>"
+    
+    def test_keyword_as_suffix(self):
+        """Test 'myauto' is identifier, not identifier + keyword"""
+        assert Tokenizer("myauto").get_tokens_as_string() == "myauto,<EOF>"
+    
+    def test_keyword_uppercase_not_keyword(self):
+        """Test 'AUTO' is identifier due to case sensitivity"""
+        assert Tokenizer("AUTO").get_tokens_as_string() == "AUTO,<EOF>"
+    
+    def test_keyword_mixed_case_not_keyword(self):
+        """Test 'Auto' is identifier due to case sensitivity"""
+        assert Tokenizer("Auto").get_tokens_as_string() == "Auto,<EOF>"
+
+
+# =============================================================================
+# ADDITIONAL COMMENT TESTS (3 tests) - Gap Coverage
+# =============================================================================
+
+class TestCommentEdgeCases:
+    """Additional comment edge cases"""
+    
+    def test_empty_block_comment(self):
+        """Test empty block comment /**/"""
+        result = Tokenizer("/**/x").get_tokens_as_string()
+        assert "x" in result
+        assert "<EOF>" in result
+    
+    def test_block_comment_extra_stars(self):
+        """Test block comment with extra stars /*** ***/"""
+        result = Tokenizer("/*** content ***/x").get_tokens_as_string()
+        assert "x" in result
+        assert "content" not in result
+    
+    def test_block_comment_with_nested_start(self):
+        """Test /* outer /* inner */ - non-nested per spec"""
+        result = Tokenizer("/* outer /* inner */ x").get_tokens_as_string()
+        assert "x" in result
+
+
+# =============================================================================
+# OPERATOR SEQUENCE TESTS (4 tests) - Gap Coverage
+# =============================================================================
+
+class TestOperatorSequences:
+    """Test operator tokenization sequences"""
+    
+    def test_triple_equals(self):
+        """Test === is tokenized as == followed by ="""
+        result = Tokenizer("===").get_tokens_as_string()
+        assert "==" in result
+        assert "=" in result
+    
+    def test_increment_decrement_sequence(self):
+        """Test ++-- is two operators"""
+        assert Tokenizer("++--").get_tokens_as_string() == "++,--,<EOF>"
+    
+    def test_not_equal_vs_not_assign(self):
+        """Test != vs ! = distinction"""
+        assert Tokenizer("!=").get_tokens_as_string() == "!=,<EOF>"
+        assert Tokenizer("! =").get_tokens_as_string() == "!,=,<EOF>"
+    
+    def test_less_equal_vs_less_assign(self):
+        """Test <= vs < = distinction"""
+        assert Tokenizer("<=").get_tokens_as_string() == "<=,<EOF>"
+        assert Tokenizer("< =").get_tokens_as_string() == "<,=,<EOF>"
