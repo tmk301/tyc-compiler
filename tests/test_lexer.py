@@ -556,6 +556,15 @@ class TestErrorHandling:
         result = Tokenizer('"hello\rworld"').get_tokens_as_string()
         assert "Unclosed String" in result
     
+    def test_unclosed_string_escape_backslash_then_newline(self):
+        """Test unclosed string with escaped backslash followed by literal newline.
+        Input: "a\\\n (escaped backslash then real newline)
+        Expected: Unclosed String: a\\\n
+        The escaped backslash is valid, but literal newline terminates the string.
+        """
+        result = Tokenizer('"a\\\\\\n').get_tokens_as_string()
+        assert "Unclosed String" in result
+    
     def test_error_single_ampersand(self):
         """Test single ampersand (not valid operator)"""
         result = Tokenizer("&").get_tokens_as_string()
@@ -565,7 +574,6 @@ class TestErrorHandling:
         """Test single pipe (not valid operator)"""
         result = Tokenizer("|").get_tokens_as_string()
         assert "Error Token |" in result
-
 
 
 # =============================================================================
