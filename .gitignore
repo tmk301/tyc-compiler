@@ -27,3 +27,5 @@ reports/
 *.j
 .agent
 docs/
+*.g4
+!TyC.g4
