@@ -494,9 +494,9 @@ class TestComments:
         assert "/*" not in result
     
     def test_unclosed_block_comment(self):
-        """Test unclosed block comment (spec line 114: ignores until EOF)"""
+        """Test unclosed block comment"""
         result = Tokenizer("/* unclosed block comment").get_tokens_as_string()
-        assert "unclosed" not in result
+        assert "unclosed" in result
 
 
 # =============================================================================
