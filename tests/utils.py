@@ -80,6 +80,32 @@ class Tokenizer:
 
         return ",".join(tokens)
 
+    def get_tokens_with_types(self) -> str:
+        """Get tokens with their types: TOKEN_TYPE:text
+        
+        This helps distinguish between keywords and identifiers.
+        Example: 
+            - "auto" -> "KEYWORD_AUTO:auto,<EOF>"
+            - "Auto" -> "IDENTIFIER:Auto,<EOF>"
+        """
+        input_stream = InputStream(self.source_code)
+        lexer = TyCLexer(input_stream)
+
+        tokens = []
+        try:
+            while True:
+                token = lexer.nextToken()
+                if token.type == -1:  # EOF
+                    tokens.append("<EOF>")
+                    break
+                # symbolicNames contains token type names
+                type_name = lexer.symbolicNames[token.type] or str(token.type)
+                tokens.append(f"{type_name}:{token.text}")
+        except Exception as e:
+            return str(e)
+
+        return ",".join(tokens)
+
 
 class Parser:
     """Parser wrapper for testing"""
