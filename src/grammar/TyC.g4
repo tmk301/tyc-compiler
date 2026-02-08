@@ -363,10 +363,10 @@ ILLEGAL_ESCAPE
     ;
 
 UNCLOSE_STRING
-    : '"' STR_CHAR* '\\'? ('\n' | '\r\n' | EOF) {
+    : '"' STR_CHAR* '\\'? ('\n' | '\r\n' | '\r' | EOF) {
     if self.text[-1] == '\n' and len(self.text) > 1 and self.text[-2] == '\r':
         raise UncloseString(self.text[1:-2])
-    elif self.text[-1] == '\n':
+    elif self.text[-1] == '\n' or self.text[-1] == '\r':
         raise UncloseString(self.text[1:-1])
     else:
         raise UncloseString(self.text[1:])
