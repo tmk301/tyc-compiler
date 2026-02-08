@@ -7,10 +7,7 @@ from lexererr import *
 @lexer::members {
 def emit(self):
     tk = self.type
-    if tk == self.UNCLOSE_STRING:       
-        result = super().emit();
-        raise UncloseString(result.text[1:]);
-    elif tk == self.ILLEGAL_ESCAPE:
+    if tk == self.ILLEGAL_ESCAPE:
         result = super().emit();
         raise IllegalEscape(result.text[1:]);
     elif tk == self.ERROR_CHAR:
@@ -110,6 +107,12 @@ assignmentStatement
 
 lhs
     : IDENTIFIER ('.' IDENTIFIER)*
+    | IDENTIFIER '(' argumentList? ')' ('.' IDENTIFIER)+
+    | INT_LITERAL ('.' IDENTIFIER)+
+    | FLOAT_LITERAL ('.' IDENTIFIER)+
+    | STRING_LITERAL ('.' IDENTIFIER)+
+    | '{' expressionList? '}' ('.' IDENTIFIER)+
+    | '(' expression ')' ('.' IDENTIFIER)+
     ;
 
 // --- Control Flow ---
@@ -133,26 +136,32 @@ forInit
     | typeSpec IDENTIFIER
     | IDENTIFIER IDENTIFIER '=' '{' expressionList? '}'
     | IDENTIFIER IDENTIFIER
-    | IDENTIFIER '=' expression
+    | lhs '=' expression
     ;
 
 forUpdate
     : lhs '=' expression
-    | lhs '++'
-    | lhs '--'
-    | '++' lhs
-    | '--' lhs
+    | forUpdateIncDec
+    ;
+
+forUpdateIncDec
+    : '++' forUpdateIncDec
+    | '--' forUpdateIncDec
+    | '++' forUpdateTarget
+    | '--' forUpdateTarget
+    | forUpdateTarget ('++' | '--')+
+    ;
+
+forUpdateTarget
+    : '(' expression ')'
+    | '{' expressionList? '}'
+    | primaryExpression ('(' argumentList? ')')? ('.' IDENTIFIER)*
     ;
 
 // --- Switch ---
 
 switchStatement
-    : 'switch' '(' expression ')' '{' switchCase* '}'
-    ;
-
-switchCase
-    : caseClause
-    | defaultClause
+    : 'switch' '(' expression ')' '{' caseClause* defaultClause? caseClause* '}'
     ;
 
 caseClause
@@ -225,19 +234,19 @@ unaryExpression
     | '!' unaryExpression
     | '-' unaryExpression
     | '+' unaryExpression
-    | '++' unaryExpression
-    | '--' unaryExpression
+    | prefixIncDec
+    ;
+
+prefixIncDec
+    : '++' prefixIncDec
+    | '--' prefixIncDec
+    | '++' '(' expression ')'
+    | '--' '(' expression ')'
+    | postfixExpression
     ;
 
 postfixExpression
-    : primaryExpression postfixOp*
-    ;
-
-postfixOp
-    : '++'
-    | '--'
-    | '(' argumentList? ')'
-    | '.' IDENTIFIER
+    : primaryExpression ('(' argumentList? ')')? ('.' IDENTIFIER)* ('++' | '--')*
     ;
 
 primaryExpression
@@ -292,8 +301,13 @@ FLOAT_LITERAL
     | [0-9]* '.' [0-9]+ ('e' | 'E') ('+' | '-')? [0-9]+
     ;
 
+fragment STR_CHAR
+    : ~["\\\r\n]
+    | '\\' [bfrnt"\\]
+    ;
+
 STRING_LITERAL
-    : '"' (~["\\\r\n] | '\\' [bfrnt"\\])* '"' 
+    : '"' STR_CHAR* '"' 
       { self.text = self.text[1:-1] }
     ;
 
@@ -345,11 +359,18 @@ BLOCK_COMMENT
 // --- Error Tokens ---
 
 ILLEGAL_ESCAPE
-    : '"' (~["\\\r\n] | '\\' [bfrnt"\\])* '\\' ~[bfrnt"\\]
+    : '"' STR_CHAR* '\\' ~[bfrnt"\\\r\n]
     ;
 
 UNCLOSE_STRING
-    : '"' (~["\\\r\n] | '\\' [bfrnt"\\])*
+    : '"' STR_CHAR* '\\'? ('\n' | '\r\n' | EOF) {
+    if self.text[-1] == '\n' and len(self.text) > 1 and self.text[-2] == '\r':
+        raise UncloseString(self.text[1:-2])
+    elif self.text[-1] == '\n':
+        raise UncloseString(self.text[1:-1])
+    else:
+        raise UncloseString(self.text[1:])
+}
     ;
 
 ERROR_CHAR
