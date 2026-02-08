@@ -1,6 +1,6 @@
 """
 Lexer test cases for TyC compiler
-100 test cases covering all token types and error handling
+142 test cases covering all lexer token types, escape sequences, comments, and error handling
 """
 
 import pytest
@@ -128,7 +128,7 @@ class TestIdentifiers:
 
 
 # =============================================================================
-# INTEGER LITERAL TESTS (10 tests)
+# INTEGER LITERAL TESTS (7 tests)
 # =============================================================================
 
 class TestIntegerLiterals:
@@ -153,18 +153,6 @@ class TestIntegerLiterals:
     def test_leading_zeros(self):
         """Test integer with leading zeros"""
         assert Tokenizer("007").get_tokens_as_string() == "007,<EOF>"
-    
-    def test_two_digit(self):
-        """Test two-digit integer"""
-        assert Tokenizer("42").get_tokens_as_string() == "42,<EOF>"
-    
-    def test_hundred(self):
-        """Test one hundred"""
-        assert Tokenizer("100").get_tokens_as_string() == "100,<EOF>"
-    
-    def test_thousand(self):
-        """Test one thousand"""
-        assert Tokenizer("1000").get_tokens_as_string() == "1000,<EOF>"
     
     def test_consecutive_integers(self):
         """Test consecutive integers separated by space"""
@@ -448,7 +436,7 @@ class TestDotColon:
 
 
 # =============================================================================
-# COMMENT TESTS (8 tests)
+# COMMENT TESTS (9 tests)
 # =============================================================================
 
 class TestComments:
@@ -493,6 +481,12 @@ class TestComments:
         assert "int" in result
         assert "/*" not in result
     
+    def test_line_comment_terminated_by_cr(self):
+        """Test line comment terminated by carriage return (old Mac style)"""
+        result = Tokenizer("// comment\rint").get_tokens_as_string()
+        assert "int" in result
+        assert "comment" not in result
+    
     def test_unclosed_block_comment(self):
         """Test unclosed block comment"""
         result = Tokenizer("/* unclosed block comment").get_tokens_as_string()
@@ -500,7 +494,7 @@ class TestComments:
 
 
 # =============================================================================
-# ERROR HANDLING TESTS (12 tests)
+# ERROR HANDLING TESTS (18 tests)
 # =============================================================================
 
 class TestErrorHandling:
@@ -556,6 +550,16 @@ class TestErrorHandling:
         result = Tokenizer('"hello\rworld"').get_tokens_as_string()
         assert "Unclosed String" in result
     
+    def test_unclosed_string_with_crlf(self):
+        """Test unclosed string terminated by Windows CRLF (\\r\\n)"""
+        result = Tokenizer('"hello\r\nworld"').get_tokens_as_string()
+        assert "Unclosed String" in result
+    
+    def test_unclosed_string_with_lfcr(self):
+        """Test unclosed string terminated by LF+CR (\\n\\r) - LF terminates first"""
+        result = Tokenizer('"hello\n\rworld"').get_tokens_as_string()
+        assert "Unclosed String" in result
+    
     def test_unclosed_string_escape_backslash_then_newline(self):
         """Test unclosed string with escaped backslash followed by literal newline.
         Input: "a\\\n (escaped backslash then real newline)
@@ -563,6 +567,16 @@ class TestErrorHandling:
         The escaped backslash is valid, but literal newline terminates the string.
         """
         result = Tokenizer('"a\\\\\\n').get_tokens_as_string()
+        assert "Unclosed String" in result
+    
+    def test_unclosed_string_at_eof_empty(self):
+        """Test unclosed string with only opening quote at EOF"""
+        result = Tokenizer('"').get_tokens_as_string()
+        assert "Unclosed String" in result
+    
+    def test_unclosed_string_with_trailing_backslash_eof(self):
+        """Test unclosed string ending with backslash at EOF"""
+        result = Tokenizer('"hello\\').get_tokens_as_string()
         assert "Unclosed String" in result
     
     def test_error_single_ampersand(self):

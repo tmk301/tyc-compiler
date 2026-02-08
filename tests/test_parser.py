@@ -1,6 +1,6 @@
 """
 Parser test cases for TyC compiler
-100 test cases covering all grammar rules
+189 test cases covering all grammar rules, expressions, statements, and edge cases
 """
 
 import pytest
@@ -1259,3 +1259,142 @@ class TestPrefixPostfixCombinations:
         """
         assert Parser(source).parse() == "success"
 
+
+# =============================================================================
+# LHS EDGE CASES (per grammar lines 108-116) - Gap Coverage
+# =============================================================================
+
+class TestLhsEdgeCases:
+    """Test LHS (left-hand side) grammar rule edge cases"""
+    
+    def test_function_call_member_access(self):
+        """Test getPoint().x = 10; - function call result member access"""
+        source = """
+        struct Point { int x; int y; };
+        Point getPoint() { Point p; return p; }
+        void f() { getPoint().x = 10; }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_parenthesized_expr_member_access(self):
+        """Test (p).x = 10; - parenthesized expression member access"""
+        source = """
+        struct Point { int x; int y; };
+        void f() { Point p; (p).x = 10; }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_struct_literal_member_access(self):
+        """Test {1, 2}.x - struct literal member access in expression"""
+        source = """
+        struct Point { int x; int y; };
+        void f() { auto v = {1, 2}.x; }
+        """
+        assert Parser(source).parse() == "success"
+
+
+# =============================================================================
+# FOR INIT WITH STRUCT (per grammar lines 137-138) - Gap Coverage
+# =============================================================================
+
+class TestForInitWithStruct:
+    """Test for loop init with struct variable declarations"""
+    
+    def test_for_init_struct_with_literal(self):
+        """Test for (Point p = {0, 0}; ...; ...)"""
+        source = """
+        struct Point { int x; int y; };
+        void f() { for (Point p = {0, 0}; 1 < 10; ) p.x = 1; }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_for_init_struct_without_init(self):
+        """Test for (Point p; ...; ...)"""
+        source = """
+        struct Point { int x; int y; };
+        void f() { for (Point p; 1 < 10; ) p.x = 1; }
+        """
+        assert Parser(source).parse() == "success"
+
+
+# =============================================================================
+# MULTIPLE INCREMENT/DECREMENT CHAINS (per grammar line 152) - Gap Coverage
+# =============================================================================
+
+class TestMultipleIncDecChains:
+    """Test multiple increment/decrement operator chains per grammar"""
+    
+    def test_multiple_postfix_increment(self):
+        """Test x++++ (multiple postfix increments)"""
+        assert Parser("void f() { int x; x++++; }").parse() == "success"
+    
+    def test_multiple_prefix_increment(self):
+        """Test ++++x (multiple prefix increments)"""
+        assert Parser("void f() { int x; ++++x; }").parse() == "success"
+    
+    def test_mixed_prefix_postfix(self):
+        """Test ++x++ (prefix then postfix)"""
+        assert Parser("void f() { int x; ++x++; }").parse() == "success"
+    
+    def test_multiple_decrement(self):
+        """Test x---- (multiple postfix decrements)"""
+        assert Parser("void f() { int x; x----; }").parse() == "success"
+
+
+# =============================================================================
+# DEFAULT BETWEEN CASES (per grammar line 164) - Gap Coverage
+# =============================================================================
+
+class TestDefaultBetweenCases:
+    """Test default clause appearing between case clauses"""
+    
+    def test_default_in_middle(self):
+        """Test default clause between two case clauses (grammar line 164)"""
+        source = """
+        void f() {
+            switch (x) {
+                case 1: x = 1;
+                default: x = 0;
+                case 2: x = 2;
+            }
+        }
+        """
+        assert Parser(source).parse() == "success"
+    
+    def test_cases_after_default(self):
+        """Test multiple cases after default"""
+        source = """
+        void f() {
+            switch (x) {
+                default: x = 0;
+                case 1: x = 1;
+                case 2: x = 2;
+                case 3: x = 3;
+            }
+        }
+        """
+        assert Parser(source).parse() == "success"
+
+
+# =============================================================================
+# FOR UPDATE INC/DEC EDGE CASES (per grammar lines 147-159) - Gap Coverage
+# =============================================================================
+
+class TestForUpdateIncDec:
+    """Test for loop update increment/decrement patterns per grammar"""
+    
+    def test_for_update_double_prefix(self):
+        """Test for (...; ...; ++--x)"""
+        assert Parser("void f() { for (auto i = 0; i < 10; ++--i) i = i; }").parse() == "success"
+    
+    def test_for_update_parenthesized(self):
+        """Test for (...; ...; ++(x))"""
+        assert Parser("void f() { for (auto i = 0; i < 10; ++(i)) i = i; }").parse() == "success"
+    
+    def test_for_update_member_increment(self):
+        """Test for (...; ...; p.x++)"""
+        source = """
+        struct Point { int x; };
+        void f() { for (Point p; 1 < 10; p.x++) p.x = 1; }
+        """
+        assert Parser(source).parse() == "success"
